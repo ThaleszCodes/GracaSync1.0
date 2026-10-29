@@ -70,7 +70,7 @@ Manifesto, ícones PNG, shell instalável, fontes com fallback local, alvos de t
 
 ## Cuidado pastoral e encontros
 
-Ministérios iniciais editáveis: Recepção, Obreiros, Mídia, Infantil, Intercessão e Louvor. Igrejas existentes mantêm seus dados e vínculos. A entrada automática foi desativada no servidor. Em Mais → Configurações da igreja, configurar WhatsApp (país + DDD + número) e liderança. O participante abre a conversa e envia a mensagem por sua própria decisão; o app não envia mensagens nem concede aprovação espiritual. A definição de ministério é feita por pastor, administrador ou DEV em Pessoas. Uma conta continua com até um ministério.
+Ministérios iniciais editáveis: Obreiros, Mídia, Infantil, Intercessão e Louvor. Igrejas existentes mantêm seus dados e vínculos. A entrada automática foi desativada no servidor. Em Mais → Configurações da igreja, configurar WhatsApp (país + DDD + número) e liderança. O participante abre a conversa e envia a mensagem por sua própria decisão; o app não envia mensagens nem concede aprovação espiritual. A definição de ministério é feita por pastor, administrador ou DEV em Pessoas. Uma conta continua com até um ministério.
 
 A igreja pode publicar foto e logo próprios (JPG/PNG/WebP, até 5MB) no bucket público church-branding, com escrita restrita a pastores/administradores/DEV no diretório da igreja. Não publicar imagens sem autorização. As imagens antigas são mantidas ao substituir a foto.
 

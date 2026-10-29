@@ -106,7 +106,7 @@ async function setup(page: Page, role = "member", phone = "") {
       ministries: [
         {
           id: "m1",
-          name: "Recepção",
+          name: "Obreiros",
           description: "Acolher nossa comunidade.",
         },
       ],
@@ -234,7 +234,7 @@ test("processo pastoral, contato ausente e jornada encontro-serviço", async ({
     /^https:\/\/wa.me\/5553999999999\?text=/,
   );
   expect(decodeURIComponent((await link.getAttribute("href")) || "")).toContain(
-    "Recepção",
+    "Obreiros",
   );
   await expect(
     page.getByRole("button", { name: "Quero participar", exact: true }),

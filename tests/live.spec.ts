@@ -39,13 +39,13 @@ test("fluxo real: criar igreja, ministério, evento, financeiro e entrada de vis
   await page
     .getByRole("button", { name: "Criar ministério", exact: true })
     .click();
-  await page.getByLabel("Nome do ministério").fill("Recepção de teste");
+  await page.getByLabel("Nome do ministério").fill("Obreiros de teste");
   await page
     .getByLabel("Sobre a equipe")
     .fill("Acolher cada pessoa com carinho.");
   await page.getByRole("button", { name: "Salvar", exact: true }).click();
   await expect(
-    page.getByRole("heading", { name: "Recepção de teste" }),
+    page.getByRole("heading", { name: "Obreiros de teste" }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Mais", exact: true }).click();
   await page.getByRole("button", { name: "Agenda", exact: true }).click();

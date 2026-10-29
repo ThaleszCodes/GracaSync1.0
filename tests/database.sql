@@ -23,7 +23,7 @@ end$$;
 reset role;
 select set_config('test.code',(select invite_code from public.churches where id=current_setting('test.ca')::uuid),true);
 select set_config('test.mid',(select id::text from public.ministries where church_id=current_setting('test.ca')::uuid and name='Mídia'),true);
-select set_config('test.mid2',(select id::text from public.ministries where church_id=current_setting('test.ca')::uuid and name='Recepção'),true);
+select set_config('test.mid2',(select id::text from public.ministries where church_id=current_setting('test.ca')::uuid and name='Obreiros'),true);
 set local role authenticated;
 select set_config('request.jwt.claim.sub',current_setting('test.c'),true);
 select public.onboard('join','',current_setting('test.code'),'Voluntário','visitante');

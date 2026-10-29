@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
+  Bell,
+  Home as HomeIcon,
   Church,
   Home,
   CalendarDays,
@@ -25,6 +27,8 @@ import {
 import { supabase as db } from "./supabase";
 import type { Session } from "@supabase/supabase-js";
 import "./style.css";
+import { Dove, MoreView, HomeView, Feed, ChurchView, tabs } from "./community";
+import "./family.css";
 type Row = Record<string, any>;
 const roles: Row = {
   member: "Participante",
@@ -73,7 +77,7 @@ function Brand() {
   return (
     <div className="brand">
       <span className="brand-mark">
-        <Church size={25} />
+        <Dove />
       </span>
       <span>
         Graça<span className="brand-sync">Sync</span>
@@ -207,6 +211,7 @@ function App() {
         "cells",
         "tasks",
         "event_responses",
+        "prayer_requests",
         ...(manager ? ["profiles"] : []),
         ...(finance ? ["finance_entries", "audit_log"] : []),
       ];
@@ -436,7 +441,13 @@ function App() {
   if (finance) nav.push(["finance", "Financeiro", Wallet]);
   nav.push(["settings", "Minha conta", Settings]);
   const title: Row = {
-    home: "Um lugar para caminhar juntos.",
+    home: "Você faz parte desta família.",
+    more: "Mais",
+    church: "Minha igreja",
+    community: "Nossa comunidade",
+    prayers: "Pedidos de oração",
+    help: "Como podemos ajudar?",
+    accessibility: "Acessibilidade",
     events: "Agenda da igreja",
     ministries: "Encontre seu lugar para servir",
     tasks: manager ? "Organize o voluntariado" : "Meu voluntariado",
@@ -453,202 +464,172 @@ function App() {
       <a href="#content" className="skip">
         Ir para o conteúdo
       </a>
-      <aside className={"sidebar " + (mobile ? "open" : "")}>
-        <div className="sidebar-brand">
+      <div className="workspace">
+        <header className="family-header">
           <Brand />
           <button
-            aria-label="Fechar menu"
-            className="icon-btn close-menu"
-            onClick={() => setMobile(false)}
+            className="icon-btn"
+            aria-label="Ver avisos da igreja"
+            onClick={() => changePage("community")}
           >
-            <X />
+            <Bell size={24} />
           </button>
-        </div>
-        <div className="church-name">
-          <span className="eyebrow">MINHA COMUNIDADE</span>
-          <strong>{church?.name || "Carregando igreja…"}</strong>
-          {dev && (
-            <span className="dev-tag">
-              <ShieldCheck size={15} /> DEV · Acesso completo
-            </span>
-          )}
-        </div>
-        <nav aria-label="Navegação principal">
-          {nav.map(([p, label, Icon]) => (
-            <button
-              key={p}
-              className={page === p ? "nav-link active" : "nav-link"}
-              aria-current={page === p ? "page" : undefined}
-              onClick={() => changePage(p)}
-            >
-              <Icon size={21} />
-              {label}
-              {page === p && <ChevronRight size={17} />}
-            </button>
-          ))}
-        </nav>
-        <div className="sidebar-bottom">
-          <p>
-            Uma igreja.
-            <br />
-            <strong>Muitas formas de cuidar.</strong>
-          </p>
-          <button className="nav-link" onClick={() => db.auth.signOut()}>
-            <LogOut size={20} />
-            Sair da conta
-          </button>
-        </div>
-      </aside>
-      {mobile && <div className="scrim" onClick={() => setMobile(false)} />}
-      <div className="workspace">
-        <header className="topbar">
-          <button
-            className="icon-btn menu-btn"
-            aria-label="Abrir menu"
-            onClick={() => setMobile(true)}
-          >
-            <Menu />
-          </button>
-          <span className="top-label">Sua igreja mais próxima</span>
-          <div className="top-actions">
-            <button
-              className="text-btn"
-              aria-pressed={large}
-              onClick={() => setLarge(!large)}
-            >
-              A<span className="bigger">a</span>{" "}
-              <span className="desktop-only">
-                Letras {large ? "padrão" : "maiores"}
-              </span>
-            </button>
-            <span className="avatar">{profile.full_name.charAt(0)}</span>
-            <span className="desktop-only">
-              {profile.full_name.split(" ")[0]}
-            </span>
-          </div>
         </header>
         <main id="content" tabIndex={-1}>
-          <div className="page-heading">
-            <div>
-              <span className="eyebrow">
-                {page === "home"
-                  ? `OLÁ, ${profile.full_name.split(" ")[0].toUpperCase()}`
-                  : "GRAÇASYNC / " +
-                    nav.find((n) => n[0] === page)?.[1].toUpperCase()}
-              </span>
-              <h1>{title[page]}</h1>
+          {page !== "home" && (
+            <div className="page-heading">
+              <div>
+                <span className="eyebrow page-breadcrumb">
+                  {page === "home"
+                    ? `OLÁ, ${profile.full_name.split(" ")[0].toUpperCase()}`
+                    : "GRAÇASYNC / " +
+                      nav.find((n) => n[0] === page)?.[1].toUpperCase()}
+                </span>
+                <h1>{title[page]}</h1>
+              </div>
+              {page !== "more" && (
+                <button
+                  className="icon-btn"
+                  aria-label="Atualizar dados"
+                  disabled={loading}
+                  onClick={() => act(load, "Dados atualizados.")}
+                >
+                  <RefreshCw size={20} className={loading ? "spinning" : ""} />
+                </button>
+              )}
             </div>
-            <button
-              className="icon-btn"
-              aria-label="Atualizar dados"
-              disabled={loading}
-              onClick={() => act(load, "Dados atualizados.")}
-            >
-              <RefreshCw size={20} className={loading ? "spinning" : ""} />
-            </button>
-          </div>
+          )}
           {banners}
           {loading && <p role="status">Atualizando informações…</p>}
           {page === "home" && (
+            <HomeView
+              profile={profile}
+              church={church}
+              nextEvents={nextEvents}
+              announcements={rows("announcements")}
+              manager={manager}
+              go={changePage}
+              actions={actions}
+            />
+          )}
+          {page === "more" && (
+            <MoreView
+              profile={profile}
+              church={church}
+              manager={manager}
+              finance={finance}
+              admin={admin}
+              dev={dev}
+              go={changePage}
+              logout={() =>
+                act(async () => {
+                  await result(db.auth.signOut());
+                }, "")
+              }
+            />
+          )}
+          {page === "church" && <ChurchView church={church} go={changePage} />}
+          {page === "community" && (
+            <Feed
+              announcements={rows("announcements")}
+              church={church}
+              manager={manager}
+              actions={actions}
+              add={() => setModal({ table: "announcements" })}
+            />
+          )}
+          {page === "prayers" && (
             <>
-              <section className="welcome">
-                <div>
-                  <span className="eyebrow">BEM-VINDO À SUA COMUNIDADE</span>
-                  <h2>{church?.welcome || "Que bom ter você aqui!"}</h2>
-                  <p>
-                    Participe dos encontros, encontre seu ministério e acompanhe
-                    o que acontece na sua igreja.
-                  </p>
-                  <button onClick={() => changePage("events")}>
-                    Ver próximos encontros <ArrowRight size={18} />
-                  </button>
-                </div>
-                <Church className="welcome-church" size={170} strokeWidth={1} />
-              </section>
-              <div className="home-columns">
-                <section>
-                  <div className="section-heading">
-                    <h2>Mural da igreja</h2>
-                    {manager && (
+              <Section
+                title="Vamos orar juntos"
+                can
+                add={() => setModal({ table: "prayer_requests" })}
+              />
+              <p className="helper">
+                Seu pedido é privado: somente você, pastores e administradores
+                da sua igreja podem ler.
+              </p>
+              {rows("prayer_requests").length ? (
+                rows("prayer_requests").map((r) => (
+                  <article className="feed-post" key={r.id}>
+                    <h3>{r.title}</h3>
+                    <p className="prewrap">{r.body}</p>
+                    <small>{date(r.created_at)}</small>
+                    {(r.user_id === profile.id || admin) && (
                       <button
-                        className="text-btn"
-                        onClick={() => setModal({ table: "announcements" })}
+                        className="text-btn danger"
+                        disabled={busy}
+                        onClick={() => remove("prayer_requests", r)}
                       >
-                        <Plus size={18} />
-                        Publicar aviso
+                        Excluir pedido
                       </button>
                     )}
-                  </div>
-                  {!rows("announcements").length ? (
-                    <Empty>Ainda não há avisos publicados.</Empty>
-                  ) : (
-                    rows("announcements").map((a) => (
-                      <article className="notice-item" key={a.id}>
-                        <div className="notice-icon">
-                          <Megaphone size={20} />
-                        </div>
-                        <div>
-                          <small>{date(a.created_at)}</small>
-                          <h3>{a.title}</h3>
-                          <p className="prewrap">{a.body}</p>
-                          {manager && actions("announcements", a)}
-                        </div>
-                      </article>
-                    ))
-                  )}
-                </section>
-                <section>
-                  <div className="section-heading">
-                    <h2>Próximos encontros</h2>
-                  </div>
-                  {!nextEvents.length ? (
-                    <Empty>Os próximos encontros aparecerão aqui.</Empty>
-                  ) : (
-                    nextEvents.slice(0, 3).map((e) => (
-                      <button
-                        className="event-short"
-                        key={e.id}
-                        onClick={() => changePage("events")}
-                      >
-                        <span className="date-square">
-                          {new Date(e.starts_at).getDate()}
-                          <small>
-                            {new Date(e.starts_at)
-                              .toLocaleDateString("pt-BR", { month: "short" })
-                              .replace(".", "")}
-                          </small>
-                        </span>
-                        <span>
-                          <strong>{e.title}</strong>
-                          <small>{date(e.starts_at)}</small>
-                        </span>
-                        <ChevronRight size={18} />
-                      </button>
-                    ))
-                  )}
-                  <div className="serve-note">
-                    <HeartHandshake size={27} />
-                    <h3>Seu cuidado faz diferença.</h3>
-                    <p>
-                      {profile.ministry_id
-                        ? "Você já faz parte de um ministério. Confira suas atividades."
-                        : "Escolha um ministério e comece a participar. A entrada é automática."}
-                    </p>
-                    <button
-                      className="text-btn"
-                      onClick={() =>
-                        changePage(profile.ministry_id ? "tasks" : "ministries")
-                      }
-                    >
-                      {profile.ministry_id
-                        ? "Ver minhas atividades"
-                        : "Conhecer ministérios"}
-                      <ArrowRight size={17} />
-                    </button>
-                  </div>
-                </section>
-              </div>
+                  </article>
+                ))
+              ) : (
+                <Empty>
+                  Compartilhe seu pedido de oração com a liderança da sua
+                  igreja.
+                </Empty>
+              )}
             </>
+          )}
+          {page === "accessibility" && (
+            <section className="accessibility-page">
+              <h2>Uma leitura confortável para você</h2>
+              <p>
+                Ajuste o tamanho das letras. Sua preferência fica salva neste
+                aparelho.
+              </p>
+              <button
+                className="secondary"
+                aria-pressed={large}
+                onClick={() => setLarge(!large)}
+              >
+                {large ? "Usar letras padrão" : "Aumentar letras"}
+              </button>
+              <div className="reading-sample">
+                <h3>Você faz parte desta família.</h3>
+                <p>
+                  Um lugar para se conectar, servir e cuidar da sua comunidade.
+                </p>
+              </div>
+            </section>
+          )}
+          {page === "help" && (
+            <section className="help-page">
+              <details open>
+                <summary>Como participar de um ministério?</summary>
+                <p>
+                  Abra Servir e escolha Quero participar. A entrada é
+                  automática. Você pode participar de um único ministério por
+                  vez.
+                </p>
+              </details>
+              <details>
+                <summary>Onde vejo minhas atividades?</summary>
+                <p>
+                  Em Mais → Minhas atividades. Você pode marcar como concluídas
+                  as tarefas atribuídas a você.
+                </p>
+              </details>
+              <details>
+                <summary>Como aumentar as letras?</summary>
+                <p>Em Mais → Acessibilidade, toque em Aumentar letras.</p>
+              </details>
+              <details>
+                <summary>Como instalar o aplicativo?</summary>
+                <p>
+                  No Android, use Instalar aplicativo no menu do navegador. No
+                  iPhone, abra no Safari, toque em Compartilhar e Adicionar à
+                  Tela de Início.
+                </p>
+              </details>
+              <p className="helper">
+                Para dúvidas sobre sua comunidade ou seus cargos, procure a
+                liderança da sua igreja.
+              </p>
+            </section>
           )}
           {page === "events" && (
             <>
@@ -1038,10 +1019,30 @@ function App() {
             </div>
           )}
         </main>
-        <footer>
-          GraçaSync <span>·</span> Feito para aproximar pessoas.
-        </footer>
       </div>
+      <nav className="bottom-nav" aria-label="Navegação principal">
+        {tabs.map(([p, label, Icon]) => {
+          const active =
+            page === p ||
+            (p === "ministries" && page === "tasks") ||
+            (p === "more" &&
+              !["home", "church", "ministries", "tasks", "community"].includes(
+                page,
+              ));
+          const TabIcon = p === "home" ? HomeIcon : Icon;
+          return (
+            <button
+              key={p}
+              aria-current={active ? "page" : undefined}
+              className={active ? "selected" : ""}
+              onClick={() => changePage(p)}
+            >
+              <TabIcon size={23} strokeWidth={1.6} />
+              <span>{label}</span>
+            </button>
+          );
+        })}
+      </nav>
       {modal && (
         <Editor
           key={modal.table + (modal.row?.id || "")}
@@ -1548,6 +1549,13 @@ const specs: Record<
   string,
   { label: string; fields: [string, string, string, boolean?][] }
 > = {
+  prayer_requests: {
+    label: "Pedido de oração",
+    fields: [
+      ["title", "Assunto", "text", true],
+      ["body", "Seu pedido", "textarea", true],
+    ],
+  },
   announcements: {
     label: "Aviso",
     fields: [

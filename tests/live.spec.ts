@@ -33,9 +33,9 @@ test("fluxo real: criar igreja, ministério, evento, financeiro e entrada de vis
     .getByRole("button", { name: "Criar espaço da minha igreja" })
     .click();
   await expect(
-    page.getByRole("heading", { name: "Um lugar para caminhar juntos." }),
+    page.getByRole("heading", { name: "Você faz parte desta família." }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Ministérios", exact: true }).click();
+  await page.getByRole("button", { name: "Servir", exact: true }).click();
   await page.getByRole("button", { name: "Adicionar", exact: true }).click();
   await page.getByLabel("Nome do ministério").fill("Recepção de teste");
   await page
@@ -45,6 +45,7 @@ test("fluxo real: criar igreja, ministério, evento, financeiro e entrada de vis
   await expect(
     page.getByRole("heading", { name: "Recepção de teste" }),
   ).toBeVisible();
+  await page.getByRole("button", { name: "Mais", exact: true }).click();
   await page.getByRole("button", { name: "Agenda", exact: true }).click();
   await page.getByRole("button", { name: "Adicionar", exact: true }).click();
   await page.getByLabel("Nome do encontro").fill("Encontro de teste");
@@ -53,6 +54,7 @@ test("fluxo real: criar igreja, ministério, evento, financeiro e entrada de vis
   await expect(
     page.getByRole("heading", { name: "Encontro de teste" }),
   ).toBeVisible();
+  await page.getByRole("button", { name: "Mais", exact: true }).click();
   await page.getByRole("button", { name: "Financeiro", exact: true }).click();
   await page.getByRole("button", { name: "Adicionar", exact: true }).click();
   await page.getByLabel("Descrição", { exact: true }).fill("Oferta de teste");
@@ -62,7 +64,8 @@ test("fluxo real: criar igreja, ministério, evento, financeiro e entrada de vis
   await expect(
     page.getByRole("cell", { name: "Oferta de teste", exact: true }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Minha conta", exact: true }).click();
+  await page.getByRole("button", { name: "Mais", exact: true }).click();
+  await page.getByRole("button", { name: "Meu perfil", exact: true }).click();
   const code = await page.locator(".invite code").innerText();
   await page.screenshot({
     path: "test-results/desktop-settings.png",
@@ -84,19 +87,17 @@ test("fluxo real: criar igreja, ministério, evento, financeiro e entrada de vis
     .getByRole("button", { name: "Entrar na igreja", exact: true })
     .click();
   await expect(
-    visitor.getByRole("heading", { name: "Um lugar para caminhar juntos." }),
+    visitor.getByRole("heading", { name: "Você faz parte desta família." }),
   ).toBeVisible();
   await visitor.screenshot({
     path: "test-results/mobile-home.png",
     fullPage: true,
   });
-  await visitor.getByRole("button", { name: "Abrir menu" }).click();
+  await visitor.getByRole("button", { name: "Mais" }).click();
   await expect(
     visitor.getByRole("button", { name: "Financeiro", exact: true }),
   ).toHaveCount(0);
-  await visitor
-    .getByRole("button", { name: "Ministérios", exact: true })
-    .click();
+  await visitor.getByRole("button", { name: "Servir", exact: true }).click();
   await visitor.getByRole("button", { name: "Quero participar" }).click();
   await expect(
     visitor.getByRole("button", { name: "Meu ministério · Sair" }),
@@ -106,7 +107,7 @@ test("fluxo real: criar igreja, ministério, evento, financeiro e entrada de vis
       () => document.documentElement.scrollWidth <= innerWidth,
     ),
   ).toBeTruthy();
-  await visitor.getByRole("button", { name: "Abrir menu" }).click();
+  await visitor.getByRole("button", { name: "Mais" }).click();
   await visitor.getByRole("button", { name: "Agenda", exact: true }).click();
   await visitor.getByRole("button", { name: "Confirmar presença" }).click();
   await expect(
@@ -135,13 +136,15 @@ test("regressão: leitura financeira completa e saída da conta", async ({
   await page.getByLabel("Sua senha").fill(fixtures.password);
   await page.getByRole("button", { name: "Entrar na minha conta" }).click();
   await expect(
-    page.getByRole("heading", { name: "Um lugar para caminhar juntos." }),
+    page.getByRole("heading", { name: "Você faz parte desta família." }),
   ).toBeVisible();
+  await page.getByRole("button", { name: "Mais", exact: true }).click();
   await page.getByRole("button", { name: "Financeiro", exact: true }).click();
   await expect(
     page.getByRole("cell", { name: "Oferta de teste", exact: true }),
   ).toBeVisible();
   await expect(page.locator(".finance-summary")).toContainText("150,50");
+  await page.getByRole("button", { name: "Mais", exact: true }).click();
   await page.getByRole("button", { name: "Sair da conta" }).click();
   await expect(
     page.getByRole("heading", { name: "Que bom ter você aqui." }),

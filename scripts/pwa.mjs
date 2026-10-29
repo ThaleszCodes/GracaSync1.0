@@ -8,7 +8,13 @@ let s = fs.readFileSync(p, "utf8");
 s = s.replace(
   /c\.addAll\(\[[\s\S]*?\]\)/,
   "c.addAll(" +
-    JSON.stringify(["/", "/icon-192.png", "/icon-512.png", ...assets]) +
+    JSON.stringify([
+      "/",
+      "/icon-192.png",
+      "/icon-512.png",
+      "/community-welcome.jpg",
+      ...assets,
+    ]) +
     ")",
 );
 s = s.replace(

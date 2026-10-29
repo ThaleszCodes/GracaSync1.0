@@ -62,7 +62,7 @@ Manifesto, ícones PNG, shell instalável, fontes com fallback local, alvos de t
 
 ## Limites da V1
 
-- Até 1.000 registros recentes por seção. O resultado financeiro é calculado a partir dos lançamentos carregados; para operação de grande volume, adicionar paginação e agregação no servidor antes de superar esse limite.
+- As seções gerais exibem até 1.000 registros recentes. O financeiro busca todos os lançamentos da igreja por páginas, para não truncar totais ou exportações. Para grande volume, migrar essa leitura para filtros mensais e agregação no servidor.
 - Células funcionam como diretório de encontros; sem controle de presença ou inscrição em células.
 - Voluntariado cobre atividades, responsável, prazo e conclusão; sem escala recorrente ou substituições.
 - Sem cobrança de assinatura, conciliação bancária, notificações push, anexos ou integração WorshipSync.

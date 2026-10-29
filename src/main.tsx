@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   Church,
@@ -58,7 +58,11 @@ function err(e: any) {
         ? "Aguarde um pouco antes de tentar novamente."
         : /fetch|network/i.test(m)
           ? "Não conseguimos conectar. Confira sua internet e tente novamente."
-          : m;
+          : /foreign key constraint/i.test(m)
+            ? "Este registro está em uso. Remova os vínculos antes de excluir."
+            : /duplicate key/i.test(m)
+              ? "Já existe um registro com esses dados."
+              : m;
 }
 async function result(q: any) {
   const r = await q;
@@ -94,6 +98,8 @@ function Empty({ children }: any) {
   );
 }
 function App() {
+  const currentUser = useRef<string | null>(null),
+    generation = useRef(0);
   const [session, setSession] = useState<Session | null>(null),
     [authReady, setAuthReady] = useState(false),
     [profile, setProfile] = useState<Row | null>(null),
@@ -122,10 +128,13 @@ function App() {
   useEffect(() => {
     db.auth.getSession().then(({ data, error }) => {
       if (error) setError(err(error));
+      currentUser.current = data.session?.user.id || null;
       setSession(data.session);
       setAuthReady(true);
     });
     const { data } = db.auth.onAuthStateChange((event, s) => {
+      if (currentUser.current !== (s?.user.id || null)) generation.current++;
+      currentUser.current = s?.user.id || null;
       setSession(s);
       if (event === "PASSWORD_RECOVERY") setRecovery(true);
       if (!s) {
@@ -134,6 +143,8 @@ function App() {
         setData({});
         setContext("");
         setDev(false);
+        setModal(null);
+        setChurches([]);
       }
     });
     const off = () => setOnline(navigator.onLine);
@@ -164,10 +175,13 @@ function App() {
       ),
       result(db.rpc("is_dev")),
     ]);
+    const list = d
+      ? await result(db.from("churches").select("*").order("name"))
+      : [];
+    if (currentUser.current !== session.user.id) return;
     setProfile(p);
     setDev(d);
-    if (d)
-      setChurches(await result(db.from("churches").select("*").order("name")));
+    setChurches(list);
   }
   useEffect(() => {
     if (session) {
@@ -179,12 +193,13 @@ function App() {
   }, [session?.user.id]);
   async function load() {
     if (!cid) return;
+    const request = ++generation.current;
     setLoading(true);
     try {
       const c = await result(
         db.from("churches").select("*").eq("id", cid).single(),
       );
-      setChurch(c);
+
       const tables = [
         "announcements",
         "events",
@@ -196,37 +211,48 @@ function App() {
         ...(finance ? ["finance_entries", "audit_log"] : []),
       ];
       const entries = await Promise.all(
-        tables.map(async (t) => [
-          t,
-          await result(
-            db
-              .from(t)
-              .select("*")
-              .eq("church_id", cid)
-              .order(
-                t === "event_responses"
-                  ? "event_id"
-                  : t === "audit_log"
-                    ? "created_at"
-                    : "created_at",
-                { ascending: false },
-              )
-              .limit(1000),
-          ),
-        ]),
+        tables.map(async (t) => {
+          const all: Row[] = [];
+          let offset = 0;
+          do {
+            const batch = await result(
+              db
+                .from(t)
+                .select("*")
+                .eq("church_id", cid)
+                .order(t === "event_responses" ? "event_id" : "created_at", {
+                  ascending: false,
+                })
+                .order(t === "event_responses" ? "user_id" : "id", {
+                  ascending: false,
+                })
+                .range(offset, offset + 999),
+            );
+            all.push(...batch);
+            offset += batch.length;
+            if (t !== "finance_entries" || batch.length < 1000) break;
+          } while (true);
+          return [t, all];
+        }),
       );
+      if (request !== generation.current) return;
+      setChurch(c);
       setData(Object.fromEntries(entries));
     } catch (e) {
-      setError(err(e));
+      if (request === generation.current) setError(err(e));
     } finally {
-      setLoading(false);
+      if (request === generation.current) setLoading(false);
     }
   }
   useEffect(() => {
     if (profile) load();
+    return () => {
+      generation.current++;
+    };
   }, [cid, profile?.role, dev]);
   useEffect(() => {
     setPage("home");
+    setModal(null);
     setData({});
     setChurch(null);
   }, [cid]);
@@ -674,13 +700,11 @@ function App() {
                                             .delete()
                                             .eq("event_id", e.id)
                                             .eq("user_id", profile.id)
-                                        : db
-                                            .from("event_responses")
-                                            .insert({
-                                              event_id: e.id,
-                                              user_id: profile.id,
-                                              church_id: cid,
-                                            }),
+                                        : db.from("event_responses").insert({
+                                            event_id: e.id,
+                                            user_id: profile.id,
+                                            church_id: cid,
+                                          }),
                                     );
                                     await load();
                                   },
@@ -1515,7 +1539,7 @@ function Finance({ entries, audit, add, actions }: any) {
         </div>
       )}
       <p className="helper">
-        As listas exibem até 1.000 registros recentes por seção.
+        Todos os lançamentos carregados são considerados no resultado do mês.
       </p>
     </>
   );

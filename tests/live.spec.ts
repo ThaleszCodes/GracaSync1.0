@@ -115,3 +115,36 @@ test("fluxo real: criar igreja, ministério, evento, financeiro e entrada de vis
   await page.close();
   await visitor.close();
 });
+
+test("regressão: leitura financeira completa e saída da conta", async ({
+  browser,
+}) => {
+  test.skip(!fixtures, "Exige as contas temporárias e o fluxo anterior.");
+  test.setTimeout(180000);
+  const page = await browser.newPage();
+  await page.route("https://*.supabase.co/**", async (route) => {
+    try {
+      const response = await route.fetch({ timeout: 90000 });
+      await route.fulfill({ response });
+    } catch {
+      await route.abort();
+    }
+  });
+  await page.goto("/");
+  await page.getByLabel("Seu e-mail").fill("graca-e2e-a@example.invalid");
+  await page.getByLabel("Sua senha").fill(fixtures.password);
+  await page.getByRole("button", { name: "Entrar na minha conta" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Um lugar para caminhar juntos." }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Financeiro", exact: true }).click();
+  await expect(
+    page.getByRole("cell", { name: "Oferta de teste", exact: true }),
+  ).toBeVisible();
+  await expect(page.locator(".finance-summary")).toContainText("150,50");
+  await page.getByRole("button", { name: "Sair da conta" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Que bom ter você aqui." }),
+  ).toBeVisible();
+  await page.close();
+});

@@ -17,7 +17,7 @@ O projeto está conectado ao Supabase `oywdpselqqzvfqmwnfxv`. A chave presente n
 1. Criar conta e confirmar o e-mail.
 2. Escolher **Cadastrar minha igreja** ou entrar pelo código compartilhado pela igreja.
 3. Quem cria a igreja recebe o cargo Administrador e configura nome, mensagem e endereço em Minha conta.
-4. Administrador ou pastor atribui cargos em Pessoas. Uma conta pertence a uma única igreja e pode participar de um único ministério, com entrada automática. Trocar de ministério substitui o vínculo anterior; não concede cargo administrativo.
+4. Administrador ou pastor atribui cargos em Pessoas. Uma conta pertence a uma única igreja e pode participar de um único ministério, após orientação pastoral. Quero servir abre uma conversa no WhatsApp configurado pela igreja, sem inscrever automaticamente. Pastores/administradores definem o vínculo em Pessoas; isso não concede cargo administrativo.
 
 ## DEV
 
@@ -25,13 +25,13 @@ O projeto está conectado ao Supabase `oywdpselqqzvfqmwnfxv`. A chave presente n
 
 ## Permissões
 
-| Perfil                 | Comunidade / agenda / células       | Ministério          | Tarefas                                 | Pessoas e cargos            | Financeiro           | Configurar igreja |
-| ---------------------- | ----------------------------------- | ------------------- | --------------------------------------- | --------------------------- | -------------------- | ----------------- |
-| Participante           | Consultar, confirmar presença       | Escolher/sair de um | Somente as atribuídas, concluir/reabrir | Próprio perfil              | Não                  | Consultar         |
-| Líder                  | Gerenciar conteúdo                  | Gerenciar           | Gerenciar                               | Consultar pessoas           | Não                  | Consultar         |
-| Financeiro             | Consultar                           | Escolher/sair       | Próprias                                | Próprio perfil              | Gerenciar e exportar | Consultar         |
-| Pastor / Administrador | Gerenciar                           | Gerenciar           | Gerenciar                               | Consultar e atribuir cargos | Gerenciar e exportar | Editar            |
-| DEV                    | Acesso a todas as igrejas e módulos | Completo            | Completo                                | Completo                    | Completo             | Completo          |
+| Perfil                 | Comunidade / agenda / células       | Ministério             | Tarefas                                 | Pessoas e cargos            | Financeiro           | Configurar igreja |
+| ---------------------- | ----------------------------------- | ---------------------- | --------------------------------------- | --------------------------- | -------------------- | ----------------- |
+| Participante           | Consultar, confirmar presença       | Conversar com pastores | Somente as atribuídas, concluir/reabrir | Próprio perfil              | Não                  | Consultar         |
+| Líder                  | Gerenciar conteúdo                  | Gerenciar              | Gerenciar                               | Consultar pessoas           | Não                  | Consultar         |
+| Financeiro             | Consultar                           | Conversar com pastores | Próprias                                | Próprio perfil              | Gerenciar e exportar | Consultar         |
+| Pastor / Administrador | Gerenciar                           | Gerenciar              | Gerenciar                               | Consultar e atribuir cargos | Gerenciar e exportar | Editar            |
+| DEV                    | Acesso a todas as igrejas e módulos | Completo               | Completo                                | Completo                    | Completo             | Completo          |
 
 A última conta Administrador não pode ser rebaixada. O financeiro registra entradas e saídas; não realiza pagamentos ou transferências. Alterações nos principais registros são auditadas. O histórico financeiro possui leitura restrita.
 
@@ -67,3 +67,11 @@ Manifesto, ícones PNG, shell instalável, fontes com fallback local, alvos de t
 - Voluntariado cobre atividades, responsável, prazo e conclusão; sem escala recorrente ou substituições.
 - Sem cobrança de assinatura, conciliação bancária, notificações push, anexos ou integração WorshipSync.
 - Cargo DEV dá acesso ao produto e aos dados pela aplicação; não concede credenciais de infraestrutura.
+
+## Cuidado pastoral e encontros
+
+Ministérios iniciais editáveis: Recepção, Obreiros, Mídia, Infantil, Intercessão e Louvor. Igrejas existentes mantêm seus dados e vínculos. A entrada automática foi desativada no servidor. Em Mais → Configurações da igreja, configurar WhatsApp (país + DDD + número) e liderança. O participante abre a conversa e envia a mensagem por sua própria decisão; o app não envia mensagens nem concede aprovação espiritual. A definição de ministério é feita por pastor, administrador ou DEV em Pessoas. Uma conta continua com até um ministério.
+
+A igreja pode publicar foto e logo próprios (JPG/PNG/WebP, até 5MB) no bucket público church-branding, com escrita restrita a pastores/administradores/DEV no diretório da igreja. Não publicar imagens sem autorização. As imagens antigas são mantidas ao substituir a foto.
+
+Atividades podem ser ligadas a eventos da mesma igreja. No detalhe do encontro, o participante confirma presença, consulta orientações e conclui suas próprias atividades. A home destaca a próxima atividade pendente. Transições e feedback respeitam movimento reduzido. Testes de interface com fixtures verificam WhatsApp e navegação; testes SQL verificam a autorização real.

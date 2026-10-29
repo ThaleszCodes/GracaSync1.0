@@ -1,0 +1,1 @@
+alter table public.churches add column pastor_photo_url text not null default '' check(pastor_photo_url='' or pastor_photo_url like 'https://oywdpselqqzvfqmwnfxv.supabase.co/storage/v1/object/public/church-branding/%');grant update(pastor_photo_url) on public.churches to authenticated;

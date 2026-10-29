@@ -29,6 +29,7 @@ import type { Session } from "@supabase/supabase-js";
 import "./style.css";
 import { Dove, MoreView, HomeView, Feed, ChurchView, tabs } from "./community";
 import "./family.css";
+import { Serving, EventJourney, ChurchCareSettings } from "./care";
 type Row = Record<string, any>;
 const roles: Row = {
   member: "Participante",
@@ -112,6 +113,7 @@ function App() {
     [churches, setChurches] = useState<Row[]>([]),
     [context, setContext] = useState(""),
     [page, setPage] = useState("home"),
+    [eventId, setEventId] = useState<string | null>(null),
     [data, setData] = useState<Record<string, Row[]>>({}),
     [busy, setBusy] = useState(false),
     [loading, setLoading] = useState(false),
@@ -170,6 +172,11 @@ function App() {
     document.documentElement.classList.toggle("large-text", large);
     localStorage.setItem("graca-large", String(large));
   }, [large]);
+  useEffect(() => {
+    if (!notice) return;
+    const timer = window.setTimeout(() => setNotice(""), 6000);
+    return () => window.clearTimeout(timer);
+  }, [notice]);
   async function identity() {
     if (!session) return;
     await result(db.rpc("bootstrap"));
@@ -257,10 +264,23 @@ function App() {
   }, [cid, profile?.role, dev]);
   useEffect(() => {
     setPage("home");
+    setEventId(null);
     setModal(null);
     setData({});
     setChurch(null);
   }, [cid]);
+  useEffect(() => {
+    if (!cid) return;
+    const refresh = () => {
+      if (document.visibilityState === "visible") load();
+    };
+    document.addEventListener("visibilitychange", refresh);
+    window.addEventListener("online", refresh);
+    return () => {
+      document.removeEventListener("visibilitychange", refresh);
+      window.removeEventListener("online", refresh);
+    };
+  }, [cid, profile?.role, dev]);
   async function act(
     fn: () => Promise<any>,
     message = "Pronto! Alteração salva.",
@@ -279,7 +299,8 @@ function App() {
     }
   }
   const rows = (t: string) => data[t] || [];
-  const changePage = (p: string) => {
+  const changePage = (p: string, selected?: string) => {
+    setEventId(selected || null);
     setPage(p);
     setMobile(false);
     setNotice("");
@@ -449,6 +470,7 @@ function App() {
     help: "Como podemos ajudar?",
     accessibility: "Acessibilidade",
     events: "Agenda da igreja",
+    event: "Nosso encontro",
     ministries: "Encontre seu lugar para servir",
     tasks: manager ? "Organize o voluntariado" : "Meu voluntariado",
     cells: "A igreja mais perto de você",
@@ -475,549 +497,618 @@ function App() {
             <Bell size={24} />
           </button>
         </header>
-        <main id="content" tabIndex={-1}>
-          {page !== "home" && (
-            <div className="page-heading">
-              <div>
-                <span className="eyebrow page-breadcrumb">
-                  {page === "home"
-                    ? `OLÁ, ${profile.full_name.split(" ")[0].toUpperCase()}`
-                    : "GRAÇASYNC / " +
-                      nav.find((n) => n[0] === page)?.[1].toUpperCase()}
-                </span>
-                <h1>{title[page]}</h1>
-              </div>
-              {page !== "more" && (
-                <button
-                  className="icon-btn"
-                  aria-label="Atualizar dados"
-                  disabled={loading}
-                  onClick={() => act(load, "Dados atualizados.")}
-                >
-                  <RefreshCw size={20} className={loading ? "spinning" : ""} />
-                </button>
-              )}
-            </div>
-          )}
-          {banners}
-          {loading && <p role="status">Atualizando informações…</p>}
-          {page === "home" && (
-            <HomeView
-              profile={profile}
-              church={church}
-              nextEvents={nextEvents}
-              announcements={rows("announcements")}
-              manager={manager}
-              go={changePage}
-              actions={actions}
-            />
-          )}
-          {page === "more" && (
-            <MoreView
-              profile={profile}
-              church={church}
-              manager={manager}
-              finance={finance}
-              admin={admin}
-              dev={dev}
-              go={changePage}
-              logout={() =>
-                act(async () => {
-                  await result(db.auth.signOut());
-                }, "")
-              }
-            />
-          )}
-          {page === "church" && <ChurchView church={church} go={changePage} />}
-          {page === "community" && (
-            <Feed
-              announcements={rows("announcements")}
-              church={church}
-              manager={manager}
-              actions={actions}
-              add={() => setModal({ table: "announcements" })}
-            />
-          )}
-          {page === "prayers" && (
-            <>
-              <Section
-                title="Vamos orar juntos"
-                can
-                add={() => setModal({ table: "prayer_requests" })}
-              />
-              <p className="helper">
-                Seu pedido é privado: somente você, pastores e administradores
-                da sua igreja podem ler.
-              </p>
-              {rows("prayer_requests").length ? (
-                rows("prayer_requests").map((r) => (
-                  <article className="feed-post" key={r.id}>
-                    <h3>{r.title}</h3>
-                    <p className="prewrap">{r.body}</p>
-                    <small>{date(r.created_at)}</small>
-                    {(r.user_id === profile.id || admin) && (
-                      <button
-                        className="text-btn danger"
-                        disabled={busy}
-                        onClick={() => remove("prayer_requests", r)}
-                      >
-                        Excluir pedido
-                      </button>
-                    )}
-                  </article>
-                ))
-              ) : (
-                <Empty>
-                  Compartilhe seu pedido de oração com a liderança da sua
-                  igreja.
-                </Empty>
-              )}
-            </>
-          )}
-          {page === "accessibility" && (
-            <section className="accessibility-page">
-              <h2>Uma leitura confortável para você</h2>
-              <p>
-                Ajuste o tamanho das letras. Sua preferência fica salva neste
-                aparelho.
-              </p>
-              <button
-                className="secondary"
-                aria-pressed={large}
-                onClick={() => setLarge(!large)}
-              >
-                {large ? "Usar letras padrão" : "Aumentar letras"}
-              </button>
-              <div className="reading-sample">
-                <h3>Você faz parte desta família.</h3>
-                <p>
-                  Um lugar para se conectar, servir e cuidar da sua comunidade.
-                </p>
-              </div>
-            </section>
-          )}
-          {page === "help" && (
-            <section className="help-page">
-              <details open>
-                <summary>Como participar de um ministério?</summary>
-                <p>
-                  Abra Servir e escolha Quero participar. A entrada é
-                  automática. Você pode participar de um único ministério por
-                  vez.
-                </p>
-              </details>
-              <details>
-                <summary>Onde vejo minhas atividades?</summary>
-                <p>
-                  Em Mais → Minhas atividades. Você pode marcar como concluídas
-                  as tarefas atribuídas a você.
-                </p>
-              </details>
-              <details>
-                <summary>Como aumentar as letras?</summary>
-                <p>Em Mais → Acessibilidade, toque em Aumentar letras.</p>
-              </details>
-              <details>
-                <summary>Como instalar o aplicativo?</summary>
-                <p>
-                  No Android, use Instalar aplicativo no menu do navegador. No
-                  iPhone, abra no Safari, toque em Compartilhar e Adicionar à
-                  Tela de Início.
-                </p>
-              </details>
-              <p className="helper">
-                Para dúvidas sobre sua comunidade ou seus cargos, procure a
-                liderança da sua igreja.
-              </p>
-            </section>
-          )}
-          {page === "events" && (
-            <>
-              <Section
-                title="Encontros e celebrações"
-                can={manager}
-                add={() => setModal({ table: "events" })}
-              />
-              {!rows("events").length ? (
-                <Empty>Nenhum evento cadastrado.</Empty>
-              ) : (
-                <div className="card-grid">
-                  {[...rows("events")]
-                    .sort((a, b) => a.starts_at.localeCompare(b.starts_at))
-                    .map((e) => {
-                      const joined = rows("event_responses").some(
-                        (r) => r.event_id === e.id && r.user_id === profile.id,
-                      );
-                      return (
-                        <article className="content-card" key={e.id}>
-                          <span className="eyebrow">
-                            {new Date(e.starts_at) < new Date()
-                              ? "REALIZADO"
-                              : "ENCONTRO"}
-                          </span>
-                          <h2>{e.title}</h2>
-                          <p className="prewrap">{e.description}</p>
-                          <p>
-                            <CalendarDays size={18} />
-                            {date(e.starts_at)}
-                          </p>
-                          {e.location && (
-                            <p>
-                              <MapPin size={18} />
-                              {e.location}
-                            </p>
-                          )}
-                          {new Date(e.starts_at) >= new Date() && (
-                            <button
-                              className={joined ? "secondary" : ""}
-                              disabled={busy}
-                              onClick={() =>
-                                act(
-                                  async () => {
-                                    await result(
-                                      joined
-                                        ? db
-                                            .from("event_responses")
-                                            .delete()
-                                            .eq("event_id", e.id)
-                                            .eq("user_id", profile.id)
-                                        : db.from("event_responses").insert({
-                                            event_id: e.id,
-                                            user_id: profile.id,
-                                            church_id: cid,
-                                          }),
-                                    );
-                                    await load();
-                                  },
-                                  joined
-                                    ? "Presença cancelada."
-                                    : "Presença confirmada!",
-                                )
-                              }
-                            >
-                              {joined ? (
-                                <>
-                                  <Check size={18} />
-                                  Confirmado · Cancelar
-                                </>
-                              ) : (
-                                "Confirmar presença"
-                              )}
-                            </button>
-                          )}
-                          {manager && actions("events", e)}
-                        </article>
-                      );
-                    })}
+        <main id="content" tabIndex={-1} aria-busy={loading}>
+          <div key={page} className="route-view">
+            {page !== "home" && (
+              <div className="page-heading">
+                <div>
+                  <span className="eyebrow page-breadcrumb">
+                    {page === "home"
+                      ? `OLÁ, ${profile.full_name.split(" ")[0].toUpperCase()}`
+                      : "GRAÇASYNC / " +
+                        nav.find((n) => n[0] === page)?.[1].toUpperCase()}
+                  </span>
+                  <h1>{title[page]}</h1>
                 </div>
-              )}
-            </>
-          )}
-          {page === "ministries" && (
-            <>
-              <Section
-                title="Ministérios"
-                can={manager}
-                add={() => setModal({ table: "ministries" })}
-              />
-              <p className="helper">
-                Você pode participar de um ministério. Ao escolher outro, o
-                vínculo anterior é substituído automaticamente.
-              </p>
-              {!rows("ministries").length ? (
-                <Empty>A liderança ainda não cadastrou ministérios.</Empty>
-              ) : (
-                <div className="card-grid">
-                  {rows("ministries").map((m) => (
-                    <article
-                      className={
-                        "content-card " +
-                        (profile.ministry_id === m.id ? "selected-card" : "")
-                      }
-                      key={m.id}
-                    >
-                      <HeartHandshake size={28} />
-                      <h2>{m.name}</h2>
-                      <p className="prewrap">
-                        {m.description || "Faça parte desta equipe."}
-                      </p>
-                      <button
-                        className={
-                          profile.ministry_id === m.id ? "secondary" : ""
-                        }
-                        disabled={busy || profile.church_id !== cid}
-                        onClick={() =>
-                          act(
-                            async () => {
-                              if (
-                                profile.ministry_id &&
-                                profile.ministry_id !== m.id &&
-                                !confirm(
-                                  "Trocar seu ministério atual por " +
-                                    m.name +
-                                    "?",
-                                )
-                              )
-                                return;
-                              await result(
-                                db.rpc("join_ministry", {
-                                  mid:
-                                    profile.ministry_id === m.id ? null : m.id,
-                                }),
-                              );
-                              await identity();
-                            },
-                            profile.ministry_id === m.id
-                              ? "Você saiu do ministério."
-                              : "Pronto! Você faz parte deste ministério.",
-                          )
-                        }
-                      >
-                        {profile.ministry_id === m.id
-                          ? "Meu ministério · Sair"
-                          : "Quero participar"}
-                      </button>
-                      {manager && actions("ministries", m)}
-                    </article>
-                  ))}
-                </div>
-              )}
-            </>
-          )}
-          {page === "tasks" && (
-            <>
-              <Section
-                title={manager ? "Atividades da equipe" : "Minhas atividades"}
-                can={manager}
-                add={() => setModal({ table: "tasks" })}
-              />
-              {!rows("tasks").length ? (
-                <Empty>
-                  Nenhuma atividade por aqui. Quando uma tarefa for atribuída a
-                  você, ela aparecerá nesta página.
-                </Empty>
-              ) : (
-                rows("tasks").map((t) => (
-                  <article className="task-row" key={t.id}>
-                    <button
-                      className={
-                        "task-check " + (t.status === "done" ? "done" : "")
-                      }
-                      disabled={busy}
-                      aria-label={
-                        (t.status === "done" ? "Reabrir" : "Concluir") +
-                        " " +
-                        t.title
-                      }
-                      onClick={() =>
-                        act(async () => {
-                          await result(db.rpc("complete_task", { tid: t.id }));
-                          await load();
-                        })
-                      }
-                    >
-                      {t.status === "done" && <Check />}
-                    </button>
-                    <div>
-                      <h3>{t.title}</h3>
-                      <p>{t.description}</p>
-                      <small>
-                        {date(t.due_date)} ·{" "}
-                        {t.status === "done" ? "Concluída" : "Pendente"}
-                        {manager &&
-                          " · " +
-                            (rows("profiles").find(
-                              (p) => p.id === t.assigned_to,
-                            )?.full_name || "Sem responsável")}
-                      </small>
-                    </div>
-                    {manager && actions("tasks", t)}
-                  </article>
-                ))
-              )}
-            </>
-          )}
-          {page === "cells" && (
-            <>
-              <Section
-                title="Encontros em comunidade"
-                can={manager}
-                add={() => setModal({ table: "cells" })}
-              />
-              {!rows("cells").length ? (
-                <Empty>As células da igreja aparecerão aqui.</Empty>
-              ) : (
-                <div className="card-grid">
-                  {rows("cells").map((c) => (
-                    <article className="content-card" key={c.id}>
-                      <MapPin size={27} />
-                      <h2>{c.name}</h2>
-                      <p className="prewrap">{c.description}</p>
-                      <p>{c.meeting_time}</p>
-                      <p>{c.location}</p>
-                      {manager && actions("cells", c)}
-                    </article>
-                  ))}
-                </div>
-              )}
-            </>
-          )}
-          {page === "people" && manager && (
-            <People
-              people={rows("profiles")}
-              ministries={rows("ministries")}
-              admin={admin}
-              busy={busy}
-              act={act}
-              refresh={async () => {
-                await identity();
-                await load();
-              }}
-            />
-          )}
-          {page === "finance" && finance && (
-            <Finance
-              entries={rows("finance_entries")}
-              audit={rows("audit_log")}
-              add={() => setModal({ table: "finance_entries" })}
-              actions={actions}
-            />
-          )}
-          {page === "settings" && (
-            <div className="settings-grid">
-              <section className="panel">
-                <h2>Meus dados</h2>
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    const f = new FormData(e.currentTarget);
-                    act(async () => {
-                      await result(
-                        db.rpc("update_profile", {
-                          person_name: f.get("name"),
-                          kind: f.get("kind"),
-                        }),
-                      );
-                      await identity();
-                    });
-                  }}
-                >
-                  <Field label="Nome completo">
-                    <input
-                      name="name"
-                      required
-                      minLength={2}
-                      maxLength={100}
-                      defaultValue={profile.full_name}
-                    />
-                  </Field>
-                  <Field label="Minha participação">
-                    <select name="kind" defaultValue={profile.member_type}>
-                      {Object.entries(kinds).map(([v, l]) => (
-                        <option key={v} value={v}>
-                          {String(l)}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
-                  <p>{session.user.email}</p>
-                  <p>
-                    Acesso: <strong>{dev ? "DEV" : roles[profile.role]}</strong>
-                  </p>
-                  <button disabled={busy}>Salvar meus dados</button>
-                </form>
-                <button className="text-btn" onClick={() => setLarge(!large)}>
-                  {large
-                    ? "Voltar ao tamanho padrão"
-                    : "Aumentar tamanho das letras"}
-                </button>
-                {install && (
+                {page !== "more" && (
                   <button
-                    className="secondary"
-                    onClick={async () => {
-                      await install.prompt();
-                      setInstall(null);
-                    }}
+                    className="icon-btn"
+                    aria-label="Atualizar dados"
+                    disabled={loading}
+                    onClick={() => act(load, "Dados atualizados.")}
                   >
-                    <Download size={18} />
-                    Instalar aplicativo
+                    <RefreshCw
+                      size={20}
+                      className={loading ? "spinning" : ""}
+                    />
                   </button>
                 )}
+              </div>
+            )}
+            {banners}
+            {loading && (
+              <div className="loading-state" role="status">
+                <span className="loading-dot" />
+                Preparando sua comunidade…
+              </div>
+            )}
+            {page === "home" && (
+              <HomeView
+                profile={profile}
+                church={church}
+                nextEvents={nextEvents}
+                tasks={rows("tasks")}
+                responses={rows("event_responses")}
+                announcements={rows("announcements")}
+                manager={manager}
+                go={changePage}
+                actions={actions}
+              />
+            )}
+            {page === "more" && (
+              <MoreView
+                profile={profile}
+                church={church}
+                manager={manager}
+                finance={finance}
+                admin={admin}
+                dev={dev}
+                go={changePage}
+                logout={() =>
+                  act(async () => {
+                    await result(db.auth.signOut());
+                  }, "")
+                }
+              />
+            )}
+            {page === "church" && (
+              <ChurchView church={church} go={changePage} />
+            )}
+            {page === "community" && (
+              <Feed
+                announcements={rows("announcements")}
+                church={church}
+                manager={manager}
+                actions={actions}
+                add={() => setModal({ table: "announcements" })}
+              />
+            )}
+            {page === "prayers" && (
+              <>
+                <Section
+                  title="Vamos orar juntos"
+                  can
+                  add={() => setModal({ table: "prayer_requests" })}
+                />
                 <p className="helper">
-                  Para instalar no iPhone: abra no Safari, toque em Compartilhar
-                  e em Adicionar à Tela de Início.
+                  Seu pedido é privado: somente você, pastores e administradores
+                  da sua igreja podem ler.
+                </p>
+                {rows("prayer_requests").length ? (
+                  rows("prayer_requests").map((r) => (
+                    <article className="feed-post" key={r.id}>
+                      <h3>{r.title}</h3>
+                      <p className="prewrap">{r.body}</p>
+                      <small>{date(r.created_at)}</small>
+                      {(r.user_id === profile.id || admin) && (
+                        <button
+                          className="text-btn danger"
+                          disabled={busy}
+                          onClick={() => remove("prayer_requests", r)}
+                        >
+                          Excluir pedido
+                        </button>
+                      )}
+                    </article>
+                  ))
+                ) : (
+                  <Empty>
+                    Compartilhe seu pedido de oração com a liderança da sua
+                    igreja.
+                  </Empty>
+                )}
+              </>
+            )}
+            {page === "accessibility" && (
+              <section className="accessibility-page">
+                <h2>Uma leitura confortável para você</h2>
+                <p>
+                  Ajuste o tamanho das letras. Sua preferência fica salva neste
+                  aparelho.
+                </p>
+                <button
+                  className="secondary"
+                  aria-pressed={large}
+                  onClick={() => setLarge(!large)}
+                >
+                  {large ? "Usar letras padrão" : "Aumentar letras"}
+                </button>
+                <div className="reading-sample">
+                  <h3>Você faz parte desta família.</h3>
+                  <p>
+                    Um lugar para se conectar, servir e cuidar da sua
+                    comunidade.
+                  </p>
+                </div>
+              </section>
+            )}
+            {page === "help" && (
+              <section className="help-page">
+                <details open>
+                  <summary>Como participar de um ministério?</summary>
+                  <p>
+                    Abra Servir e toque em Quero servir · Conversar. O WhatsApp
+                    dos pastores será aberto para você conversar e enviar sua
+                    mensagem. A liderança acompanha e confirma a participação;
+                    não há entrada automática.
+                  </p>
+                </details>
+                <details>
+                  <summary>Onde vejo minhas atividades?</summary>
+                  <p>
+                    Em Mais → Minhas atividades. Você pode marcar como
+                    concluídas as tarefas atribuídas a você.
+                  </p>
+                </details>
+                <details>
+                  <summary>Como aumentar as letras?</summary>
+                  <p>Em Mais → Acessibilidade, toque em Aumentar letras.</p>
+                </details>
+                <details>
+                  <summary>Como instalar o aplicativo?</summary>
+                  <p>
+                    No Android, use Instalar aplicativo no menu do navegador. No
+                    iPhone, abra no Safari, toque em Compartilhar e Adicionar à
+                    Tela de Início.
+                  </p>
+                </details>
+                <p className="helper">
+                  Para dúvidas sobre sua comunidade ou seus cargos, procure a
+                  liderança da sua igreja.
                 </p>
               </section>
-              <section className="panel">
-                <h2>Minha igreja</h2>
-                {devSelect}
-                {admin && church ? (
+            )}
+            {page === "events" && (
+              <>
+                <Section
+                  title="Encontros e celebrações"
+                  can={manager}
+                  add={() => setModal({ table: "events" })}
+                />
+                {!rows("events").length ? (
+                  <Empty>Nenhum evento cadastrado.</Empty>
+                ) : (
+                  <div className="card-grid">
+                    {[...rows("events")]
+                      .sort((a, b) => a.starts_at.localeCompare(b.starts_at))
+                      .map((e) => {
+                        const joined = rows("event_responses").some(
+                          (r) =>
+                            r.event_id === e.id && r.user_id === profile.id,
+                        );
+                        return (
+                          <article className="content-card" key={e.id}>
+                            <span className="eyebrow">
+                              {new Date(e.starts_at) < new Date()
+                                ? "REALIZADO"
+                                : "ENCONTRO"}
+                            </span>
+                            <h2>
+                              <button
+                                className="event-title-link"
+                                onClick={() => changePage("event", e.id)}
+                              >
+                                {e.title}
+                                <ChevronRight size={19} />
+                              </button>
+                            </h2>
+                            <p className="prewrap">{e.description}</p>
+                            <p>
+                              <CalendarDays size={18} />
+                              {date(e.starts_at)}
+                            </p>
+                            {e.location && (
+                              <p>
+                                <MapPin size={18} />
+                                {e.location}
+                              </p>
+                            )}
+                            {new Date(e.starts_at) >= new Date() && (
+                              <button
+                                className={joined ? "secondary" : ""}
+                                disabled={busy}
+                                onClick={() =>
+                                  act(
+                                    async () => {
+                                      await result(
+                                        joined
+                                          ? db
+                                              .from("event_responses")
+                                              .delete()
+                                              .eq("event_id", e.id)
+                                              .eq("user_id", profile.id)
+                                          : db.from("event_responses").insert({
+                                              event_id: e.id,
+                                              user_id: profile.id,
+                                              church_id: cid,
+                                            }),
+                                      );
+                                      await load();
+                                    },
+                                    joined
+                                      ? "Presença cancelada."
+                                      : "Presença confirmada!",
+                                  )
+                                }
+                              >
+                                {joined ? (
+                                  <>
+                                    <Check size={18} />
+                                    Confirmado · Cancelar
+                                  </>
+                                ) : (
+                                  "Confirmar presença"
+                                )}
+                              </button>
+                            )}
+                            <button
+                              className="text-btn"
+                              onClick={() => changePage("event", e.id)}
+                            >
+                              Ver encontro e meu serviço
+                              <ChevronRight size={17} />
+                            </button>
+                            {manager && actions("events", e)}
+                          </article>
+                        );
+                      })}
+                  </div>
+                )}
+              </>
+            )}
+            {page === "ministries" && (
+              <Serving
+                ministries={rows("ministries")}
+                profile={profile}
+                church={church}
+                manager={manager}
+                actions={actions}
+                add={() => setModal({ table: "ministries" })}
+                go={changePage}
+              />
+            )}
+            {page === "event" && (
+              <EventJourney
+                event={rows("events").find((e) => e.id === eventId)}
+                church={church}
+                profile={profile}
+                responses={rows("event_responses")}
+                tasks={rows("tasks")}
+                busy={busy}
+                manager={manager}
+                go={changePage}
+                confirmPresence={(e: Row, joined: boolean) =>
+                  act(
+                    async () => {
+                      await result(
+                        joined
+                          ? db
+                              .from("event_responses")
+                              .delete()
+                              .eq("event_id", e.id)
+                              .eq("user_id", profile.id)
+                          : db.from("event_responses").insert({
+                              event_id: e.id,
+                              user_id: profile.id,
+                              church_id: cid,
+                            }),
+                      );
+                      await load();
+                    },
+                    joined
+                      ? "Presença cancelada."
+                      : "Presença confirmada! Esperamos você.",
+                  )
+                }
+                complete={(tid: string) =>
+                  act(async () => {
+                    await result(db.rpc("complete_task", { tid }));
+                    await load();
+                  }, "Atividade atualizada.")
+                }
+                addTask={(id: string) =>
+                  setModal({
+                    table: "tasks",
+                    row: { event_id: id },
+                    isNew: true,
+                  } as any)
+                }
+              />
+            )}
+            {page === "tasks" && (
+              <>
+                <Section
+                  title={manager ? "Atividades da equipe" : "Minhas atividades"}
+                  can={manager}
+                  add={() => setModal({ table: "tasks" })}
+                />
+                {!rows("tasks").length ? (
+                  <Empty>
+                    Nenhuma atividade por aqui. Quando uma tarefa for atribuída
+                    a você, ela aparecerá nesta página.
+                  </Empty>
+                ) : (
+                  rows("tasks").map((t) => (
+                    <article className="task-row" key={t.id}>
+                      <button
+                        className={
+                          "task-check " + (t.status === "done" ? "done" : "")
+                        }
+                        disabled={busy}
+                        aria-label={
+                          (t.status === "done" ? "Reabrir" : "Concluir") +
+                          " " +
+                          t.title
+                        }
+                        onClick={() =>
+                          act(async () => {
+                            await result(
+                              db.rpc("complete_task", { tid: t.id }),
+                            );
+                            await load();
+                          })
+                        }
+                      >
+                        {t.status === "done" && <Check />}
+                      </button>
+                      <div>
+                        <h3>{t.title}</h3>
+                        <p>{t.description}</p>
+                        <small>
+                          {date(t.due_date)} ·{" "}
+                          {t.status === "done" ? "Concluída" : "Pendente"}
+                          {manager &&
+                            " · " +
+                              (rows("profiles").find(
+                                (p) => p.id === t.assigned_to,
+                              )?.full_name || "Sem responsável")}
+                        </small>
+                      </div>
+                      {t.event_id && (
+                        <button
+                          className="text-btn"
+                          onClick={() => changePage("event", t.event_id)}
+                        >
+                          Ver encontro
+                          <ChevronRight size={17} />
+                        </button>
+                      )}
+                      {manager && actions("tasks", t)}
+                    </article>
+                  ))
+                )}
+              </>
+            )}
+            {page === "cells" && (
+              <>
+                <Section
+                  title="Encontros em comunidade"
+                  can={manager}
+                  add={() => setModal({ table: "cells" })}
+                />
+                {!rows("cells").length ? (
+                  <Empty>As células da igreja aparecerão aqui.</Empty>
+                ) : (
+                  <div className="card-grid">
+                    {rows("cells").map((c) => (
+                      <article className="content-card" key={c.id}>
+                        <MapPin size={27} />
+                        <h2>{c.name}</h2>
+                        <p className="prewrap">{c.description}</p>
+                        <p>{c.meeting_time}</p>
+                        <p>{c.location}</p>
+                        {manager && actions("cells", c)}
+                      </article>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+            {page === "people" && manager && (
+              <People
+                people={rows("profiles")}
+                ministries={rows("ministries")}
+                admin={admin}
+                busy={busy}
+                act={act}
+                refresh={async () => {
+                  await identity();
+                  await load();
+                }}
+              />
+            )}
+            {page === "finance" && finance && (
+              <Finance
+                entries={rows("finance_entries")}
+                audit={rows("audit_log")}
+                add={() => setModal({ table: "finance_entries" })}
+                actions={actions}
+              />
+            )}
+            {page === "settings" && (
+              <div className="settings-grid">
+                <section className="panel">
+                  <h2>Meus dados</h2>
                   <form
-                    key={church.id}
                     onSubmit={(e) => {
                       e.preventDefault();
-                      const f = Object.fromEntries(
-                        new FormData(e.currentTarget),
-                      );
+                      const f = new FormData(e.currentTarget);
                       act(async () => {
                         await result(
-                          db.from("churches").update(f).eq("id", cid),
+                          db.rpc("update_profile", {
+                            person_name: f.get("name"),
+                            kind: f.get("kind"),
+                          }),
                         );
-                        await load();
+                        await identity();
                       });
                     }}
                   >
-                    <Field label="Nome da igreja">
+                    <Field label="Nome completo">
                       <input
                         name="name"
-                        defaultValue={church.name}
                         required
                         minLength={2}
-                        maxLength={120}
+                        maxLength={100}
+                        defaultValue={profile.full_name}
                       />
                     </Field>
-                    <Field label="Cidade">
-                      <input name="city" defaultValue={church.city} />
+                    <Field label="Minha participação">
+                      <select name="kind" defaultValue={profile.member_type}>
+                        {Object.entries(kinds).map(([v, l]) => (
+                          <option key={v} value={v}>
+                            {String(l)}
+                          </option>
+                        ))}
+                      </select>
                     </Field>
-                    <Field label="Endereço">
-                      <input name="address" defaultValue={church.address} />
-                    </Field>
-                    <Field label="Mensagem de boas-vindas">
-                      <textarea name="welcome" defaultValue={church.welcome} />
-                    </Field>
-                    <button disabled={busy}>Salvar igreja</button>
+                    <p>{session.user.email}</p>
+                    <p>
+                      Acesso:{" "}
+                      <strong>{dev ? "DEV" : roles[profile.role]}</strong>
+                    </p>
+                    <button disabled={busy}>Salvar meus dados</button>
                   </form>
-                ) : (
-                  <p>
-                    {church?.name}
-                    <br />
-                    {church?.address}
-                    <br />
-                    {church?.city}
-                  </p>
-                )}
-                <div className="invite">
-                  <h3>Convide sua comunidade</h3>
-                  <p>
-                    Compartilhe este código para as pessoas entrarem na igreja.
-                  </p>
-                  <code>{church?.invite_code}</code>
-                  <button
-                    className="text-btn"
-                    onClick={() =>
-                      act(async () => {
-                        await navigator.clipboard.writeText(
-                          church?.invite_code || "",
-                        );
-                      }, "Código copiado!")
-                    }
-                  >
-                    Copiar código
+                  <button className="text-btn" onClick={() => setLarge(!large)}>
+                    {large
+                      ? "Voltar ao tamanho padrão"
+                      : "Aumentar tamanho das letras"}
                   </button>
-                </div>
-              </section>
-            </div>
-          )}
+                  {install && (
+                    <button
+                      className="secondary"
+                      onClick={async () => {
+                        await install.prompt();
+                        setInstall(null);
+                      }}
+                    >
+                      <Download size={18} />
+                      Instalar aplicativo
+                    </button>
+                  )}
+                  <p className="helper">
+                    Para instalar no iPhone: abra no Safari, toque em
+                    Compartilhar e em Adicionar à Tela de Início.
+                  </p>
+                </section>
+                <section className="panel">
+                  <h2>Minha igreja</h2>
+                  {devSelect}
+                  {admin && church ? (
+                    <form
+                      key={church.id}
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        const f = Object.fromEntries(
+                          new FormData(e.currentTarget),
+                        );
+                        f.pastor_whatsapp = String(
+                          f.pastor_whatsapp || "",
+                        ).replace(/\D/g, "");
+                        act(async () => {
+                          await result(
+                            db.from("churches").update(f).eq("id", cid),
+                          );
+                          await load();
+                        });
+                      }}
+                    >
+                      <Field label="Nome da igreja">
+                        <input
+                          name="name"
+                          defaultValue={church.name}
+                          required
+                          minLength={2}
+                          maxLength={120}
+                        />
+                      </Field>
+                      <Field label="Cidade">
+                        <input name="city" defaultValue={church.city} />
+                      </Field>
+                      <Field label="Endereço">
+                        <input name="address" defaultValue={church.address} />
+                      </Field>
+                      <Field label="Mensagem de boas-vindas">
+                        <textarea
+                          name="welcome"
+                          defaultValue={church.welcome}
+                        />
+                      </Field>
+                      <Field label="Nome da liderança pastoral">
+                        <input
+                          name="pastor_name"
+                          defaultValue={church.pastor_name || ""}
+                          maxLength={120}
+                          placeholder="Ex.: Pastores Ana e João"
+                        />
+                      </Field>
+                      <Field label="WhatsApp pastoral (código do país + DDD + número)">
+                        <input
+                          name="pastor_whatsapp"
+                          type="tel"
+                          defaultValue={church.pastor_whatsapp || ""}
+                          placeholder="55 53 99999-9999"
+                          maxLength={25}
+                        />
+                      </Field>
+                      <p className="helper">
+                        Este contato será disponibilizado aos participantes para
+                        conversar sobre servir. Use um número autorizado pelos
+                        pastores.
+                      </p>
+                      <button disabled={busy}>Salvar igreja</button>
+                    </form>
+                  ) : (
+                    <p>
+                      {church?.name}
+                      <br />
+                      {church?.address}
+                      <br />
+                      {church?.city}
+                    </p>
+                  )}
+                  {admin && church && (
+                    <ChurchCareSettings
+                      church={church}
+                      busy={busy}
+                      act={act}
+                      reload={load}
+                    />
+                  )}
+                  <div className="invite">
+                    <h3>Convide sua comunidade</h3>
+                    <p>
+                      Compartilhe este código para as pessoas entrarem na
+                      igreja.
+                    </p>
+                    <code>{church?.invite_code}</code>
+                    <button
+                      className="text-btn"
+                      onClick={() =>
+                        act(async () => {
+                          await navigator.clipboard.writeText(
+                            church?.invite_code || "",
+                          );
+                        }, "Código copiado!")
+                      }
+                    >
+                      Copiar código
+                    </button>
+                  </div>
+                </section>
+              </div>
+            )}
+          </div>
         </main>
       </div>
       <nav className="bottom-nav" aria-label="Navegação principal">
@@ -1050,6 +1141,7 @@ function App() {
           row={modal.row}
           ministries={rows("ministries")}
           people={rows("profiles")}
+          events={rows("events")}
           error={error}
           busy={busy}
           close={() => setModal(null)}
@@ -1332,8 +1424,9 @@ function People({ people, ministries, admin, busy, act, refresh }: any) {
         />
       </Field>
       <p className="helper">
-        Entrar em um ministério é livre. Os cargos abaixo definem os acessos
-        administrativos.
+        A participação em ministérios é confirmada pelos pastores e
+        administradores após acompanhamento. Cargos administrativos são
+        definidos separadamente.
       </p>
       <div className="people-list">
         {people
@@ -1351,6 +1444,36 @@ function People({ people, ministries, admin, busy, act, refresh }: any) {
                     "Sem ministério"}
                 </p>
               </div>
+              {admin && (
+                <Field label={"Ministério de " + p.full_name}>
+                  <select
+                    aria-label={"Ministério de " + p.full_name}
+                    value={p.ministry_id || ""}
+                    disabled={busy}
+                    onChange={(e) => {
+                      const mid = e.target.value || null;
+                      if (
+                        confirm(
+                          "Confirmar esta definição de ministério após a orientação pastoral?",
+                        )
+                      )
+                        act(async () => {
+                          await result(
+                            db.rpc("assign_ministry", { uid: p.id, mid }),
+                          );
+                          await refresh();
+                        }, "Ministério definido pela liderança.");
+                    }}
+                  >
+                    <option value="">Sem ministério</option>
+                    {ministries.map((m: Row) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              )}
               {admin ? (
                 <Field label={"Cargo de " + p.full_name}>
                   <select
@@ -1594,6 +1717,7 @@ const specs: Record<
       ["title", "O que precisa ser feito?", "text", true],
       ["description", "Orientações", "textarea"],
       ["assigned_to", "Responsável", "person"],
+      ["event_id", "Encontro relacionado", "event"],
       ["ministry_id", "Ministério", "ministry"],
       ["due_date", "Data da atividade", "date", true],
     ],
@@ -1614,6 +1738,7 @@ function Editor({
   row,
   ministries,
   people,
+  events,
   error,
   busy,
   close,
@@ -1642,7 +1767,7 @@ function Editor({
     >
       <div className="editor-header">
         <h2 id="editor-title">
-          {row ? "Editar" : "Adicionar"} {s.label.toLowerCase()}
+          {row?.id ? "Editar" : "Adicionar"} {s.label.toLowerCase()}
         </h2>
         <button
           className="icon-btn"
@@ -1670,6 +1795,7 @@ function Editor({
           if (table === "tasks") {
             payload.assigned_to = raw.assigned_to || null;
             payload.ministry_id = raw.ministry_id || null;
+            payload.event_id = raw.event_id || null;
           }
           save(payload);
         }}
@@ -1693,7 +1819,7 @@ function Editor({
                   required={required}
                   maxLength={10000}
                 />
-              ) : ["person", "ministry", "kind"].includes(type) ? (
+              ) : ["person", "ministry", "kind", "event"].includes(type) ? (
                 <select name={name} defaultValue={value}>
                   <option value="">
                     {type === "kind" ? "Escolha o tipo" : "Não definido"}
@@ -1703,12 +1829,14 @@ function Editor({
                         { id: "income", name: "Entrada" },
                         { id: "expense", name: "Saída" },
                       ]
-                    : type === "person"
-                      ? people.map((p: Row) => ({
-                          id: p.id,
-                          name: p.full_name,
-                        }))
-                      : ministries
+                    : type === "event"
+                      ? events.map((e: Row) => ({ id: e.id, name: e.title }))
+                      : type === "person"
+                        ? people.map((p: Row) => ({
+                            id: p.id,
+                            name: p.full_name,
+                          }))
+                        : ministries
                   ).map((p: Row) => (
                     <option key={p.id} value={p.id}>
                       {p.name}

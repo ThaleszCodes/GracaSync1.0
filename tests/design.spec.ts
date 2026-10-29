@@ -1,7 +1,7 @@
 import { test, expect, Page } from "@playwright/test";
 const uid = "10000000-0000-4000-8000-000000000001",
   cid = "20000000-0000-4000-8000-000000000001";
-async function setup(page: Page, role = "member") {
+async function setup(page: Page, role = "member", phone = "") {
   const user = {
     id: uid,
     aud: "authenticated",
@@ -39,11 +39,29 @@ async function setup(page: Page, role = "member") {
       ),
     { user, token },
   );
+  const state: any = {
+    responses: [],
+    tasks: [
+      {
+        id: "t1",
+        church_id: cid,
+        event_id: "e1",
+        assigned_to: uid,
+        title: "Preparar recepção",
+        description: "Chegue 20 minutos antes.",
+        due_date: "2030-01-06",
+        status: "pending",
+        created_at: "2026-01-01T12:00:00Z",
+      },
+    ],
+  };
   await page.route("https://fonts.googleapis.com/**", (r) => r.abort());
   await page.route("https://oywdpselqqzvfqmwnfxv.supabase.co/**", async (r) => {
     const path = new URL(r.request().url()).pathname,
       table = path.split("/").at(-1);
     const fixtures: any = {
+      event_responses: state.responses,
+      tasks: state.tasks,
       profiles: [
         {
           id: uid,
@@ -62,6 +80,8 @@ async function setup(page: Page, role = "member") {
           city: "Pelotas",
           address: "Rua da Comunidade, 10",
           invite_code: "EXEMPLO",
+          pastor_whatsapp: phone,
+          pastor_name: "Pastores da comunidade",
         },
       ],
       events: [
@@ -101,6 +121,19 @@ async function setup(page: Page, role = "member") {
         },
       ],
     };
+    if (table === "event_responses" && r.request().method() === "POST") {
+      state.responses.push(r.request().postDataJSON());
+      return r.fulfill({ status: 201, json: [] });
+    }
+    if (table === "event_responses" && r.request().method() === "DELETE") {
+      state.responses = [];
+      return r.fulfill({ status: 204 });
+    }
+    if (table === "complete_task") {
+      state.tasks[0].status =
+        state.tasks[0].status === "done" ? "pending" : "done";
+      return r.fulfill({ status: 204 });
+    }
     if (table === "bootstrap") return r.fulfill({ status: 204 });
     if (table === "is_dev") return r.fulfill({ json: false });
     if (path.includes("/auth/")) return r.fulfill({ json: user });
@@ -187,4 +220,91 @@ test("novo sistema em todas as áreas administrativas e desktop", async ({
   await page.getByRole("button", { name: "Adicionar", exact: true }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
   await page.getByRole("button", { name: "Cancelar", exact: true }).click();
+});
+
+test("processo pastoral, contato ausente e jornada encontro-serviço", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await setup(page, "member", "5553999999999");
+  await page.getByRole("button", { name: "Servir", exact: true }).click();
+  const link = page.getByRole("link", { name: "Quero servir · Conversar" });
+  await expect(link).toHaveAttribute(
+    "href",
+    /^https:\/\/wa.me\/5553999999999\?text=/,
+  );
+  expect(decodeURIComponent((await link.getAttribute("href")) || "")).toContain(
+    "Recepção",
+  );
+  await expect(
+    page.getByRole("button", { name: "Quero participar", exact: true }),
+  ).toHaveCount(0);
+  await page.screenshot({
+    path: "test-results/pastoral-serving.png",
+    fullPage: true,
+  });
+  await page.getByRole("button", { name: "Início", exact: true }).click();
+  await page.getByRole("button", { name: "Participar", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Meu serviço neste encontro" }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Confirmar presença", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Sua presença está confirmada!" }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Concluir Preparar recepção", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", {
+      name: "Reabrir Preparar recepção",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await page.screenshot({
+    path: "test-results/connected-event.png",
+    fullPage: true,
+  });
+});
+test("contato não configurado não permite entrada nem inventa WhatsApp", async ({
+  page,
+}) => {
+  await setup(page);
+  await page.getByRole("button", { name: "Servir", exact: true }).click();
+  await expect(
+    page.getByText(/WhatsApp pastoral ainda não foi configurado/),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Contato pastoral indisponível" }),
+  ).toBeDisabled();
+  await expect(page.locator('a[href*="wa.me"]')).toHaveCount(0);
+});
+
+test("movimento reduzido e validação de fotos da igreja", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await setup(page, "admin");
+  await page.getByRole("button", { name: "Mais", exact: true }).click();
+  expect(
+    await page
+      .locator(".route-view")
+      .evaluate((e) => getComputedStyle(e).animationName),
+  ).toBe("none");
+  await page
+    .getByRole("button", { name: "Configurações da igreja", exact: true })
+    .click();
+  await page
+    .getByLabel("Foto da comunidade")
+    .setInputFiles({
+      name: "invalid.txt",
+      mimeType: "text/plain",
+      buffer: Buffer.from("not an image"),
+    });
+  await expect(page.getByRole("alert")).toContainText(
+    "Escolha uma imagem JPG, PNG ou WebP",
+  );
+  await expect(
+    page.getByLabel("WhatsApp pastoral (código do país + DDD + número)"),
+  ).toBeVisible();
 });

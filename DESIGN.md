@@ -11,3 +11,7 @@ Referências aprovadas: home acolhedora e menu Mais limpo (29/10/2026). Implemen
 - Telas de administração compartilham cores, espaçamento e controles; tabelas e totais são usados somente onde a tarefa exige, como financeiro.
 - Pedidos de oração são privados, visíveis ao autor e aos pastores/administradores da igreja (e DEV). Sem publicação pública automática.
 - Acessibilidade: letras maiores, foco visível, modal nativo, labels em campos, layout responsivo e safe area na navegação inferior. Dados privados continuam protegidos no banco.
+
+## Continuidade e cuidado pastoral
+
+Servir direciona à conversa pastoral, sem adesão automática. Encontros têm detalhe, presença e atividades atribuídas. Fotos próprias substituem a ilustração da marca quando configuradas. Transições curtas entre telas, resposta ao toque, estados de carregamento e retorno de ações respeitam prefers-reduced-motion.

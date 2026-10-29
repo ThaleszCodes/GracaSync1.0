@@ -884,3 +884,293 @@ details p {
   grid-column: 2;
   grid-row: 2;
 }
+/* Interaction and continuity */
+button,
+a.button-link,
+input,
+select,
+textarea {
+  transition:
+    background-color 0.18s,
+    color 0.18s,
+    border-color 0.18s,
+    box-shadow 0.18s,
+    transform 0.14s;
+}
+button:active:not(:disabled),
+a.button-link:active {
+  transform: scale(0.975);
+}
+.route-view {
+  animation: route-arrive 0.22s ease-out both;
+}
+.content-card {
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+.content-card:hover {
+  border-color: #c8d9ef;
+}
+.bottom-nav button.selected {
+  transition: color 0.18s;
+}
+.bottom-nav button.selected svg {
+  animation: tab-arrive 0.2s ease-out;
+}
+.alert.success {
+  animation: feedback-arrive 0.22s ease-out;
+  position: relative;
+}
+.loading-state {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 15px 0;
+  color: #71849e;
+  font-size: 14px;
+}
+.loading-dot {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #dbe8fa;
+  border-top-color: #1676e8;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+.pastoral-note {
+  display: flex;
+  gap: 16px;
+  padding: 24px;
+  background: #f3f8ff;
+  border-radius: 14px;
+  margin: 0 0 25px;
+}
+.pastoral-note > svg {
+  flex-shrink: 0;
+  color: #b58017;
+}
+.pastoral-note h3 {
+  margin: 0 0 8px;
+}
+.pastoral-note p {
+  font-size: 14px;
+  margin: 0;
+  line-height: 1.7;
+}
+.contact-missing {
+  padding: 15px 18px;
+  background: #fff8e9;
+  color: #796027;
+  border-radius: 10px;
+  font-size: 14px;
+  line-height: 1.65;
+  margin-bottom: 25px;
+}
+.button-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: 13px 17px;
+  min-height: 48px;
+  border-radius: 10px;
+  background: #1676e8;
+  color: white;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+  margin: 10px 0;
+}
+.button-link:hover {
+  background: #0b61c7;
+}
+.serving-caption {
+  display: block;
+  font-size: 12px;
+  line-height: 1.6;
+  margin: 10px 0;
+  color: #6a7891;
+}
+.membership-status {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: #216c49 !important;
+}
+.event-title-link {
+  background: none;
+  color: inherit;
+  padding: 0;
+  min-height: 44px;
+  border: 0;
+  width: 100%;
+  justify-content: space-between;
+  text-align: left;
+  font: inherit;
+}
+.event-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+}
+.event-meta svg {
+  flex-shrink: 0;
+}
+.journey-cover {
+  width: 100%;
+  height: 230px;
+  object-fit: cover;
+  border-radius: 14px;
+  margin: 12px 0 25px;
+}
+.event-journey > h2 {
+  font-size: 27px;
+}
+.presence-panel,
+.soft-guidance {
+  padding: 24px;
+  background: #f4f8fe;
+  border-radius: 13px;
+  margin: 28px 0 34px;
+}
+.presence-panel.confirmed {
+  background: #edf7f1;
+}
+.presence-panel p,
+.soft-guidance p {
+  font-size: 14px;
+}
+.presence-panel.confirmed h3 {
+  color: #216c49;
+}
+.church-photos {
+  margin-top: 30px;
+  padding-top: 25px;
+  border-top: 1px solid var(--line);
+}
+.branding-preview {
+  width: 100%;
+  max-height: 150px;
+  object-fit: contain;
+  border-radius: 10px;
+  background: #f5f8fd;
+}
+.church-logo {
+  max-width: 90px;
+  max-height: 80px;
+  object-fit: contain;
+  margin: 0 0 18px;
+}
+.pastor-identity {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 23px;
+  background: #f5f8fd;
+  border-radius: 13px;
+  margin: 25px 0;
+}
+.pastor-identity small,
+.pastor-identity strong {
+  display: block;
+}
+.pastor-identity small {
+  margin-bottom: 7px;
+}
+.person-row {
+  flex-wrap: wrap;
+}
+.person-row > .field {
+  min-width: 170px;
+  flex: 1;
+}
+.person-row > .avatar + div {
+  min-width: 180px;
+}
+.reading-sample,
+.gathering {
+  animation: feedback-arrive 0.25s ease-out;
+}
+.event-journey {
+  max-width: 740px;
+  margin: auto;
+}
+.journey-cover {
+  object-position: center;
+}
+.home-next-step {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  background: #f3f8ff;
+  border-radius: 12px;
+  margin: 0 0 22px;
+  padding: 16px;
+  width: 100%;
+  text-align: left;
+  color: #071b46;
+  font-size: 14px;
+  font-weight: 400;
+}
+.home-next-step > span {
+  flex: 1;
+}
+.home-next-step small {
+  display: block;
+  margin-top: 5px;
+}
+@keyframes route-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(7px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes feedback-arrive {
+  from {
+    opacity: 0.4;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes tab-arrive {
+  from {
+    transform: translateY(2px);
+  }
+  to {
+    transform: none;
+  }
+}
+@media (min-width: 700px) {
+  .journey-cover {
+    height: 320px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *:before,
+  *:after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+  .loading-dot {
+    border-color: #1676e8;
+  }
+}
+
+.pastor-portrait {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}

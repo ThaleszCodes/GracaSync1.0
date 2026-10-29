@@ -169,6 +169,8 @@ export function Feed({
   );
 }
 export function HomeView({
+  tasks = [],
+  responses = [],
   profile,
   church,
   nextEvents,
@@ -177,6 +179,9 @@ export function HomeView({
   go,
   actions,
 }: R) {
+  const nextTask = tasks.find(
+    (t: R) => t.assigned_to === profile.id && t.status !== "done",
+  );
   const event = nextEvents[0],
     hour = new Date().getHours(),
     greeting = hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
@@ -207,7 +212,7 @@ export function HomeView({
       </div>
       <section className="gathering">
         <img
-          src="/community-welcome.jpg"
+          src={church?.cover_url || "/community-welcome.jpg"}
           alt="Famílias e voluntários se acolhendo em uma comunidade cristã"
           fetchPriority="high"
         />
@@ -224,12 +229,27 @@ export function HomeView({
                 : "Um lugar para caminhar juntos."}
             </p>
           </div>
-          <button onClick={() => go(event ? "events" : "church")}>
+          <button onClick={() => go(event ? "event" : "church", event?.id)}>
             {event ? "Participar" : "Conhecer"}
             <ChevronRight size={19} />
           </button>
         </div>
       </section>
+      {nextTask && (
+        <button
+          className="home-next-step"
+          onClick={() =>
+            go(nextTask.event_id ? "event" : "tasks", nextTask.event_id)
+          }
+        >
+          <ClipboardList size={23} />
+          <span>
+            <strong>Seu próximo cuidado</strong>
+            <small>{nextTask.title}</small>
+          </span>
+          <ChevronRight size={18} />
+        </button>
+      )}
       <button className="newcomer" onClick={() => go("church")}>
         <HeartHandshake />
         <span>
@@ -268,11 +288,35 @@ export function ChurchView({ church, go }: R) {
     <div className="church-view">
       <img
         className="church-cover"
-        src="/community-welcome.jpg"
+        src={church?.cover_url || "/community-welcome.jpg"}
         alt="Acolhimento em comunidade"
       />
+      {church?.logo_url && (
+        <img
+          className="church-logo"
+          src={church.logo_url}
+          alt={"Logo de " + church.name}
+        />
+      )}
       <h2>{church?.name}</h2>
       <p className="church-welcome">{church?.welcome}</p>
+      {church?.pastor_name && (
+        <div className="pastor-identity">
+          {church?.pastor_photo_url ? (
+            <img
+              className="pastor-portrait"
+              src={church.pastor_photo_url}
+              alt={church.pastor_name || "Liderança pastoral"}
+            />
+          ) : (
+            <HeartHandshake size={24} />
+          )}
+          <div>
+            <small>Caminhe com sua liderança</small>
+            <strong>{church.pastor_name}</strong>
+          </div>
+        </div>
+      )}
       {(church?.address || church?.city) && (
         <p className="church-address">
           <MapPin size={20} />

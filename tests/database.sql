@@ -9,7 +9,7 @@ insert into auth.users(id,email,email_confirmed_at,raw_user_meta_data) values
 set local role authenticated;
 select set_config('request.jwt.claim.sub',current_setting('test.a'),true);
 select set_config('test.ca',public.onboard('create','Igreja A','','Admin Teste','membro')::text,true);
-insert into public.ministries(church_id,name) values(current_setting('test.ca')::uuid,'Mídia'),(current_setting('test.ca')::uuid,'Recepção');
+insert into public.ministries(church_id,name) values(current_setting('test.ca')::uuid,'Mídia'),(current_setting('test.ca')::uuid,'Recepção') on conflict(church_id,name) do nothing;
 insert into public.finance_entries(church_id,description,kind,amount) values(current_setting('test.ca')::uuid,'Oferta teste','income',100);
 select set_config('request.jwt.claim.sub',current_setting('test.b'),true);
 select set_config('test.cb',public.onboard('create','Igreja B','','Outra Igreja','membro')::text,true);
@@ -27,8 +27,11 @@ select set_config('test.mid2',(select id::text from public.ministries where chur
 set local role authenticated;
 select set_config('request.jwt.claim.sub',current_setting('test.c'),true);
 select public.onboard('join','',current_setting('test.code'),'Voluntário','visitante');
-select public.join_ministry(current_setting('test.mid')::uuid);
-select public.join_ministry(current_setting('test.mid2')::uuid);
+do $$begin begin perform public.join_ministry(current_setting('test.mid')::uuid);raise exception 'FAIL open entry';exception when raise_exception then if sqlerrm='FAIL open entry' then raise;end if;end;end$$;
+select set_config('request.jwt.claim.sub',current_setting('test.a'),true);
+select public.assign_ministry(current_setting('test.c')::uuid,current_setting('test.mid')::uuid);
+select public.assign_ministry(current_setting('test.c')::uuid,current_setting('test.mid2')::uuid);
+select set_config('request.jwt.claim.sub',current_setting('test.c'),true);
 do $$begin
 if (select ministry_id from public.profiles where id=auth.uid())<>current_setting('test.mid2')::uuid then raise exception 'FAIL single ministry';end if;
 if exists(select 1 from public.finance_entries) then raise exception 'FAIL member finance'; end if;
@@ -54,5 +57,5 @@ select public.set_role(current_setting('test.c')::uuid,'leader');
 select set_config('request.jwt.claim.sub',current_setting('test.a'),true);
 do $$begin begin perform public.set_role(auth.uid(),'member');raise exception 'FAIL last admin';exception when raise_exception then if sqlerrm='FAIL last admin' then raise;end if;end;end$$;
 reset role;
-select 'PASS: tenant isolation, roles, single church/ministry, automatic join, finance, tasks, confirmed DEV, last admin protection' as result;
+select 'PASS: tenant isolation, roles, single church/ministry, pastoral assignment, finance, tasks, confirmed DEV, last admin protection' as result;
 rollback;

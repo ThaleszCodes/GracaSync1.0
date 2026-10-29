@@ -1,0 +1,43 @@
+begin;
+select set_config('test.pa',gen_random_uuid()::text,true),set_config('test.pb',gen_random_uuid()::text,true),set_config('test.pm',gen_random_uuid()::text,true);
+insert into auth.users(id,email,raw_user_meta_data) values(current_setting('test.pa')::uuid,'pastoral-a@example.invalid','{"full_name":"Pastor A"}'),(current_setting('test.pb')::uuid,'pastoral-b@example.invalid','{"full_name":"Pastor B"}'),(current_setting('test.pm')::uuid,'pastoral-m@example.invalid','{"full_name":"Participante"}');
+set local role authenticated;
+select set_config('request.jwt.claim.sub',current_setting('test.pa'),true);
+select set_config('test.ca',public.onboard('create','Igreja teste A','','Pastor A','membro')::text,true);
+select set_config('test.code',(select invite_code from public.churches where id=current_setting('test.ca')::uuid),true);
+select set_config('test.ma',(select id::text from public.ministries where church_id=current_setting('test.ca')::uuid and name='Mídia'),true);
+select set_config('test.ra',(select id::text from public.ministries where church_id=current_setting('test.ca')::uuid and name='Recepção'),true);
+do $$begin if(select count(*) from public.ministries where church_id=current_setting('test.ca')::uuid)<>6 then raise exception 'Preset ministries failed';end if;end$$;
+select set_config('request.jwt.claim.sub',current_setting('test.pb'),true);
+select set_config('test.cb',public.onboard('create','Igreja teste B','','Pastor B','membro')::text,true);
+select set_config('test.mb',(select id::text from public.ministries where church_id=current_setting('test.cb')::uuid and name='Mídia'),true);
+select set_config('request.jwt.claim.sub',current_setting('test.pm'),true);
+select public.onboard('join','',current_setting('test.code'),'Participante','visitante');
+do $$begin
+begin perform public.join_ministry(current_setting('test.ma')::uuid);raise exception 'FAIL old RPC allowed entry';exception when raise_exception then if sqlerrm='FAIL old RPC allowed entry' then raise;end if;end;
+begin perform private.join_ministry(current_setting('test.ma')::uuid);raise exception 'FAIL private RPC allowed entry';exception when raise_exception then if sqlerrm='FAIL private RPC allowed entry' then raise;end if;end;
+begin perform public.assign_ministry(auth.uid(),current_setting('test.ma')::uuid);raise exception 'FAIL self assignment';exception when raise_exception then if sqlerrm='FAIL self assignment' then raise;end if;end;
+if(select ministry_id from public.profiles where id=auth.uid()) is not null then raise exception 'Unexpected membership';end if;
+begin update public.churches set pastor_whatsapp='5553999999999' where id=current_setting('test.ca')::uuid;if found then raise exception 'FAIL participant changed contact';end if;exception when insufficient_privilege then null;end;
+begin insert into storage.objects(bucket_id,name) values('church-branding',current_setting('test.ca')||'/unauthorized.jpg');raise exception 'FAIL participant upload';exception when insufficient_privilege then null;end;
+end$$;
+select set_config('request.jwt.claim.sub',current_setting('test.pa'),true);
+update public.churches set pastor_whatsapp='5553999999999',pastor_name='Liderança teste' where id=current_setting('test.ca')::uuid;
+select public.assign_ministry(current_setting('test.pm')::uuid,current_setting('test.ma')::uuid);
+select public.assign_ministry(current_setting('test.pm')::uuid,current_setting('test.ra')::uuid);
+do $$begin
+if(select ministry_id from public.profiles where id=current_setting('test.pm')::uuid)<>current_setting('test.ra')::uuid then raise exception 'Single ministry assignment failed';end if;
+begin perform public.assign_ministry(current_setting('test.pm')::uuid,current_setting('test.mb')::uuid);raise exception 'FAIL cross church ministry';exception when raise_exception then if sqlerrm='FAIL cross church ministry' then raise;end if;end;
+begin perform public.assign_ministry(current_setting('test.pb')::uuid,current_setting('test.ma')::uuid);raise exception 'FAIL cross church user';exception when raise_exception then if sqlerrm='FAIL cross church user' then raise;end if;end;
+end$$;
+insert into storage.objects(bucket_id,name) values('church-branding',current_setting('test.ca')||'/authorized.jpg');
+insert into public.events(church_id,title,starts_at) values(current_setting('test.ca')::uuid,'Encontro teste',now()+interval '1 day');
+select set_config('test.event',(select id::text from public.events where church_id=current_setting('test.ca')::uuid limit 1),true);
+insert into public.tasks(church_id,title,assigned_to,event_id,due_date) values(current_setting('test.ca')::uuid,'Servir no encontro',current_setting('test.pm')::uuid,current_setting('test.event')::uuid,current_date);
+select set_config('request.jwt.claim.sub',current_setting('test.pb'),true);
+do $$begin
+begin insert into public.tasks(church_id,title,event_id,due_date) values(current_setting('test.cb')::uuid,'Invalid',current_setting('test.event')::uuid,current_date);raise exception 'FAIL cross church event';exception when foreign_key_violation then null;end;
+begin insert into storage.objects(bucket_id,name) values('church-branding',current_setting('test.ca')||'/other-church.jpg');raise exception 'FAIL cross church upload';exception when insufficient_privilege then null;end;
+end$$;
+select 'PASS: pastoral entry, presets, single ministry, tenant-safe events and branding, contact permissions' as result;
+rollback;

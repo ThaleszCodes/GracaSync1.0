@@ -36,7 +36,9 @@ test("fluxo real: criar igreja, ministério, evento, financeiro e entrada de vis
     page.getByRole("heading", { name: "Você faz parte desta família." }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Servir", exact: true }).click();
-  await page.getByRole("button", { name: "Adicionar", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Criar ministério", exact: true })
+    .click();
   await page.getByLabel("Nome do ministério").fill("Recepção de teste");
   await page
     .getByLabel("Sobre a equipe")
@@ -98,10 +100,12 @@ test("fluxo real: criar igreja, ministério, evento, financeiro e entrada de vis
     visitor.getByRole("button", { name: "Financeiro", exact: true }),
   ).toHaveCount(0);
   await visitor.getByRole("button", { name: "Servir", exact: true }).click();
-  await visitor.getByRole("button", { name: "Quero participar" }).click();
   await expect(
-    visitor.getByRole("button", { name: "Meu ministério · Sair" }),
-  ).toBeVisible();
+    visitor
+      .getByRole("button", { name: "Contato pastoral indisponível" })
+      .first(),
+  ).toBeDisabled();
+  await expect(visitor.locator('a[href*="wa.me"]')).toHaveCount(0);
   expect(
     await visitor.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,
